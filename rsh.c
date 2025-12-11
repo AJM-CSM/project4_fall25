@@ -6,6 +6,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 
 #define N 13
 
@@ -30,14 +31,21 @@ void sendmsg (char *user, char *target, char *msg) {
 	// TODO:
 	// Send a request to the server to send the message (msg) to the target user (target)
 	// by creating the message structure and writing it to server's FIFO
-
-
-
-
-
-
-
-
+	struct message req;
+	int serverFIFO;
+	
+	strcpy(req.source, user);
+	strcpy(req.target, target);
+	strcpy(req.msg, msg);
+	
+	serverFIFO = open("serverFIFO", O_WRONLY);
+	if (serverFIFO == -1) {
+		perror("Failed to open serverFIFO");
+		return;
+	}
+	
+	write(serverFIFO, &req, sizeof(struct message));
+	close(serverFIFO);
 }
 
 void* messageListener(void *arg) {
@@ -48,12 +56,23 @@ void* messageListener(void *arg) {
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
-
-
-
-
-
-
+	int userFIFO;
+	struct message incoming;
+	
+	userFIFO = open(uName, O_RDONLY);
+	if (userFIFO == -1) {
+		perror("Failed to open user FIFO");
+		pthread_exit((void*)0);
+	}
+	
+	while (1) {
+		if (read(userFIFO, &incoming, sizeof(struct message)) > 0) {
+			printf("Incoming message from %s: %s\n", incoming.source, incoming.msg);
+			fflush(stdout);
+		}
+	}
+	
+	close(userFIFO);
 	pthread_exit((void*)0);
 }
 
@@ -85,10 +104,12 @@ int main(int argc, char **argv) {
 
     // TODO:
     // create the message listener thread
-
-
-
-
+    pthread_t listenerThread;
+    if (pthread_create(&listenerThread, NULL, messageListener, NULL) != 0) {
+	perror("Failed to create message listener thread");
+	exit(1);
+    }
+    pthread_detach(listenerThread);
 
     while (1) {
 
@@ -123,16 +144,24 @@ int main(int argc, char **argv) {
 		// printf("sendmsg: you have to specify target user\n");
 		// if no message is specified, you should print the followingA
  		// printf("sendmsg: you have to enter a message\n");
-
-
-
-
-
-
-
-
-
-
+		char *target = strtok(NULL, " ");
+		if (target == NULL) {
+			printf("sendmsg: you have to specify target user\n");
+			continue;
+		}
+		
+		char *msgStart = strtok(NULL, "");
+		if (msgStart == NULL || strlen(msgStart) == 0) {
+			printf("sendmsg: you have to enter a message\n");
+			continue;
+		}
+		
+		// Remove leading spaces from message
+		while (*msgStart == ' ') {
+			msgStart++;
+		}
+		
+		sendmsg(uName, target, msgStart);
 		continue;
 	}
 
