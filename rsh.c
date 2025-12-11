@@ -156,7 +156,6 @@ int main(int argc, char **argv) {
 			continue;
 		}
 		
-		// Remove leading spaces from message
 		while (*msgStart == ' ') {
 			msgStart++;
 		}
@@ -205,22 +204,18 @@ int main(int argc, char **argv) {
 	cargv = (char**)realloc(cargv,sizeof(char*)*(n+1));
 	cargv[n] = NULL;
 
-	// Initialize spawn attributes
 	posix_spawnattr_init(&attr);
 
-	// Spawn a new process
 	if (posix_spawnp(&pid, path, NULL, &attr, cargv, environ) != 0) {
 		perror("spawn failed");
 		exit(EXIT_FAILURE);
 	}
 
-	// Wait for the spawned process to terminate
 	if (waitpid(pid, &status, 0) == -1) {
 		perror("waitpid failed");
 		exit(EXIT_FAILURE);
 	}
 
-	// Destroy spawn attributes
 	posix_spawnattr_destroy(&attr);
 
     }
